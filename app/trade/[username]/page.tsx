@@ -21,17 +21,41 @@ interface TradeData {
   cards: TradeCard[];
 }
 
-const RARITY_COLORS: Record<string, { text: string; bg: string }> = {
-  common:         { text: '#9CA3AF', bg: 'rgba(156,163,175,0.15)' },
-  uncommon:       { text: '#10B981', bg: 'rgba(16,185,129,0.15)' },
-  rare:           { text: '#3B82F6', bg: 'rgba(59,130,246,0.15)' },
-  rare_holo:      { text: '#8B5CF6', bg: 'rgba(139,92,246,0.15)' },
-  rare_holo_ex:   { text: '#EC4899', bg: 'rgba(236,72,153,0.15)' },
-  rare_ultra:     { text: '#F59E0B', bg: 'rgba(245,158,11,0.15)' },
-  rare_secret:    { text: '#EF4444', bg: 'rgba(239,68,68,0.15)' },
-  legendary:      { text: '#F59E0B', bg: 'rgba(245,158,11,0.15)' },
-  special:        { text: '#A78BFA', bg: 'rgba(167,139,250,0.15)' },
-};
+// Maps raw TCG API rarity strings to display colors
+function getRarityStyle(raw: string | null, fallback: string): { text: string; bg: string; label: string } {
+  const r = (raw ?? fallback ?? '').toLowerCase();
+  if (r.includes('secret') || r.includes('hyper'))
+    return { text: '#EF4444', bg: 'rgba(239,68,68,0.15)', label: raw ?? 'Secret Rare' };
+  if (r.includes('special illustration') || r.includes('special art'))
+    return { text: '#EC4899', bg: 'rgba(236,72,153,0.15)', label: raw ?? 'Special Illustration Rare' };
+  if (r.includes('illustration rare'))
+    return { text: '#A78BFA', bg: 'rgba(167,139,250,0.15)', label: raw ?? 'Illustration Rare' };
+  if (r.includes('vmax') || r.includes('vstar'))
+    return { text: '#F59E0B', bg: 'rgba(245,158,11,0.15)', label: raw ?? 'Rare VMAX' };
+  if (r.includes('ultra') || r.includes(' ex') || r.includes('vex') || r.includes('rare ultra'))
+    return { text: '#F59E0B', bg: 'rgba(245,158,11,0.15)', label: raw ?? 'Ultra Rare' };
+  if (r.includes('legendary') || r.includes('full art'))
+    return { text: '#F59E0B', bg: 'rgba(245,158,11,0.15)', label: raw ?? 'Legendary' };
+  if (r.includes('holo') || r.includes('rare holo'))
+    return { text: '#8B5CF6', bg: 'rgba(139,92,246,0.15)', label: raw ?? 'Rare Holo' };
+  if (r.includes('rare'))
+    return { text: '#3B82F6', bg: 'rgba(59,130,246,0.15)', label: raw ?? 'Rare' };
+  if (r.includes('uncommon'))
+    return { text: '#10B981', bg: 'rgba(16,185,129,0.15)', label: raw ?? 'Uncommon' };
+  if (r.includes('common'))
+    return { text: '#9CA3AF', bg: 'rgba(156,163,175,0.15)', label: raw ?? 'Common' };
+  // Fallback to the db rarity
+  const db: Record<string, { text: string; bg: string }> = {
+    rare_secret: { text: '#EF4444', bg: 'rgba(239,68,68,0.15)' },
+    legendary:   { text: '#F59E0B', bg: 'rgba(245,158,11,0.15)' },
+    rare_ultra:  { text: '#F59E0B', bg: 'rgba(245,158,11,0.15)' },
+    rare_holo:   { text: '#8B5CF6', bg: 'rgba(139,92,246,0.15)' },
+    rare:        { text: '#3B82F6', bg: 'rgba(59,130,246,0.15)' },
+    uncommon:    { text: '#10B981', bg: 'rgba(16,185,129,0.15)' },
+  };
+  const s = db[fallback] ?? { text: '#9CA3AF', bg: 'rgba(156,163,175,0.15)' };
+  return { ...s, label: raw ?? fallback ?? '' };
+}
 
 const CONDITION_COLORS: Record<string, string> = {
   mint:              '#22C55E',
@@ -194,7 +218,7 @@ export default function TradePage() {
             {/* Card grid */}
             <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fill, minmax(160px, 1fr))', gap: 12 }}>
               {filtered.map((card) => {
-                const rc = RARITY_COLORS[card.rarity?.toLowerCase()] ?? RARITY_COLORS.common;
+                const rc = getRarityStyle(card.rawRarity, card.rarity);
                 const cc = CONDITION_COLORS[card.condition] ?? '#9CA3AF';
                 return (
                   <div key={card.collectionId}
@@ -227,7 +251,7 @@ export default function TradePage() {
                       <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', flexWrap: 'wrap', gap: 4 }}>
                         {card.rarity && (
                           <span style={{ fontSize: 11, padding: '3px 8px', borderRadius: 999, background: rc.bg, color: rc.text, fontWeight: 600 }}>
-                            {rarityLabel(card.rarity)}
+                            {rc.label}
                           </span>
                         )}
                         {card.condition && (
