@@ -2,7 +2,6 @@
 
 import { useEffect, useState } from 'react';
 import { useParams } from 'next/navigation';
-import Image from 'next/image';
 
 interface TradeCard {
   collectionId: string;
@@ -22,32 +21,41 @@ interface TradeData {
   cards: TradeCard[];
 }
 
-const RARITY_COLORS: Record<string, string> = {
-  common:         '#9CA3AF',
-  uncommon:       '#34D399',
-  rare:           '#60A5FA',
-  rare_holo:      '#818CF8',
-  rare_holo_ex:   '#F472B6',
-  rare_ultra:     '#F59E0B',
-  rare_secret:    '#EF4444',
-  legendary:      '#F59E0B',
-  special:        '#A78BFA',
+const RARITY_COLORS: Record<string, { text: string; bg: string }> = {
+  common:         { text: '#9CA3AF', bg: 'rgba(156,163,175,0.15)' },
+  uncommon:       { text: '#10B981', bg: 'rgba(16,185,129,0.15)' },
+  rare:           { text: '#3B82F6', bg: 'rgba(59,130,246,0.15)' },
+  rare_holo:      { text: '#8B5CF6', bg: 'rgba(139,92,246,0.15)' },
+  rare_holo_ex:   { text: '#EC4899', bg: 'rgba(236,72,153,0.15)' },
+  rare_ultra:     { text: '#F59E0B', bg: 'rgba(245,158,11,0.15)' },
+  rare_secret:    { text: '#EF4444', bg: 'rgba(239,68,68,0.15)' },
+  legendary:      { text: '#F59E0B', bg: 'rgba(245,158,11,0.15)' },
+  special:        { text: '#A78BFA', bg: 'rgba(167,139,250,0.15)' },
+};
+
+const CONDITION_COLORS: Record<string, string> = {
+  mint:              '#22C55E',
+  near_mint:         '#84CC16',
+  lightly_played:    '#EAB308',
+  moderately_played: '#F97316',
+  heavily_played:    '#EF4444',
+  damaged:           '#9CA3AF',
 };
 
 function rarityLabel(rarity: string) {
   return rarity.replace(/_/g, ' ').replace(/\b\w/g, (c) => c.toUpperCase());
 }
 
-function rarityColor(rarity: string) {
-  return RARITY_COLORS[rarity?.toLowerCase()] ?? '#9CA3AF';
-}
-
 function conditionLabel(condition: string) {
   const map: Record<string, string> = {
-    mint: 'Mint', near_mint: 'Near Mint', lightly_played: 'Lightly Played',
-    moderately_played: 'Mod. Played', heavily_played: 'Heavily Played', damaged: 'Damaged',
+    mint: 'Mint', near_mint: 'NM', lightly_played: 'LP',
+    moderately_played: 'MP', heavily_played: 'HP', damaged: 'DMG',
   };
-  return map[condition] ?? condition ?? 'Unknown';
+  return map[condition] ?? condition ?? '';
+}
+
+function avatarLetter(username: string) {
+  return username.replace(/^[^a-zA-Z]*/, '').charAt(0).toUpperCase() || username.charAt(0).toUpperCase();
 }
 
 export default function TradePage() {
@@ -83,7 +91,7 @@ export default function TradePage() {
       if (c.quantity > 1) l += ` ×${c.quantity}`;
       return l;
     });
-    const text = `${data.username}'s trade list:\n${lines.join('\n')}\n\nSent from CardQuest TCG 🃏`;
+    const text = `${data.username}'s trade list:\n${lines.join('\n')}\n\n— CardQuest TCG 🃏`;
     navigator.clipboard.writeText(text).then(() => {
       setCopied(true);
       setTimeout(() => setCopied(false), 2000);
@@ -92,10 +100,11 @@ export default function TradePage() {
 
   if (loading) {
     return (
-      <div className="min-h-screen bg-gray-950 flex items-center justify-center">
-        <div className="flex flex-col items-center gap-4">
-          <div className="w-10 h-10 border-2 border-orange-500 border-t-transparent rounded-full animate-spin" />
-          <p className="text-gray-400 text-sm">Loading trade list…</p>
+      <div style={{ minHeight: '100vh', background: '#0F0B1A', display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
+        <div style={{ display: 'flex', flexDirection: 'column', alignItems: 'center', gap: 16 }}>
+          <div style={{ width: 40, height: 40, border: '3px solid #6B4FBB', borderTopColor: 'transparent', borderRadius: '50%', animation: 'spin 0.8s linear infinite' }} />
+          <style>{`@keyframes spin { to { transform: rotate(360deg); } }`}</style>
+          <p style={{ color: '#9B7FEB', fontSize: 14 }}>Loading trade list…</p>
         </div>
       </div>
     );
@@ -103,13 +112,13 @@ export default function TradePage() {
 
   if (error || !data) {
     return (
-      <div className="min-h-screen bg-gray-950 flex items-center justify-center px-4">
-        <div className="text-center">
-          <div className="text-5xl mb-4">🃏</div>
-          <h1 className="text-xl font-bold text-white mb-2">Trainer Not Found</h1>
-          <p className="text-gray-400">No trade list found for <span className="text-orange-400">@{username}</span></p>
+      <div style={{ minHeight: '100vh', background: '#0F0B1A', display: 'flex', alignItems: 'center', justifyContent: 'center', padding: '0 20px' }}>
+        <div style={{ textAlign: 'center' }}>
+          <div style={{ fontSize: 56, marginBottom: 16 }}>🃏</div>
+          <h1 style={{ color: '#FFFFFF', fontSize: 22, fontWeight: 700, marginBottom: 8 }}>Trainer Not Found</h1>
+          <p style={{ color: '#9B7FEB' }}>No trade list found for <span style={{ color: '#F4A261' }}>@{username}</span></p>
           <a href="https://apps.apple.com/us/app/cardquest-tcg/id6745005042"
-             className="mt-6 inline-block bg-orange-500 text-white px-5 py-2.5 rounded-full text-sm font-semibold hover:bg-orange-400 transition-colors">
+             style={{ display: 'inline-block', marginTop: 24, background: '#6B4FBB', color: '#fff', padding: '12px 24px', borderRadius: 999, fontSize: 14, fontWeight: 600, textDecoration: 'none' }}>
             Get CardQuest TCG
           </a>
         </div>
@@ -118,18 +127,16 @@ export default function TradePage() {
   }
 
   return (
-    <div className="min-h-screen bg-gray-950 text-white">
+    <div style={{ minHeight: '100vh', background: '#0F0B1A', color: '#FFFFFF', fontFamily: '-apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif' }}>
+
       {/* Header */}
-      <header className="bg-gray-900 border-b border-gray-800 sticky top-0 z-10">
-        <div className="max-w-4xl mx-auto px-4 py-4 flex items-center gap-3">
-          <div className="w-8 h-8 relative flex-shrink-0">
-            {/* CardQuest logo mark */}
-            <div className="w-8 h-8 bg-orange-500 rounded-lg flex items-center justify-center text-sm font-black">C</div>
-          </div>
-          <span className="text-sm font-semibold text-gray-400 tracking-wide uppercase">CardQuest TCG</span>
-          <div className="ml-auto">
+      <header style={{ background: '#1A1030', borderBottom: '1px solid #2D1F5E', position: 'sticky', top: 0, zIndex: 10 }}>
+        <div style={{ maxWidth: 900, margin: '0 auto', padding: '14px 20px', display: 'flex', alignItems: 'center', gap: 12 }}>
+          <div style={{ width: 32, height: 32, background: 'linear-gradient(135deg, #6B4FBB, #9B7FEB)', borderRadius: 8, display: 'flex', alignItems: 'center', justifyContent: 'center', fontWeight: 900, fontSize: 15, color: '#fff' }}>C</div>
+          <span style={{ fontWeight: 700, fontSize: 14, color: '#9B7FEB', letterSpacing: '0.08em', textTransform: 'uppercase' }}>CardQuest TCG</span>
+          <div style={{ marginLeft: 'auto' }}>
             <a href="https://apps.apple.com/us/app/cardquest-tcg/id6745005042"
-               className="text-xs bg-orange-500 text-white px-3 py-1.5 rounded-full font-semibold hover:bg-orange-400 transition-colors">
+               style={{ background: '#6B4FBB', color: '#fff', padding: '8px 16px', borderRadius: 999, fontSize: 13, fontWeight: 600, textDecoration: 'none' }}>
               Download App
             </a>
           </div>
@@ -137,25 +144,23 @@ export default function TradePage() {
       </header>
 
       {/* Profile hero */}
-      <div className="bg-gradient-to-b from-gray-900 to-gray-950 border-b border-gray-800">
-        <div className="max-w-4xl mx-auto px-4 py-8">
-          <div className="flex flex-col sm:flex-row items-start sm:items-center gap-5">
-            {/* Avatar */}
-            <div className="w-16 h-16 rounded-2xl bg-gradient-to-br from-orange-500 to-orange-600 flex items-center justify-center text-2xl font-black flex-shrink-0 shadow-lg shadow-orange-500/20 uppercase">
-              {data.username.replace(/^[^a-zA-Z]*/, '').charAt(0).toUpperCase() || data.username.charAt(0).toUpperCase()}
+      <div style={{ background: 'linear-gradient(to bottom, #1A1030, #0F0B1A)', borderBottom: '1px solid #2D1F5E' }}>
+        <div style={{ maxWidth: 900, margin: '0 auto', padding: '32px 20px' }}>
+          <div style={{ display: 'flex', flexWrap: 'wrap', alignItems: 'center', gap: 20 }}>
+            <div style={{ width: 64, height: 64, borderRadius: 18, background: 'linear-gradient(135deg, #6B4FBB, #9B7FEB)', display: 'flex', alignItems: 'center', justifyContent: 'center', fontSize: 26, fontWeight: 900, flexShrink: 0, boxShadow: '0 8px 24px rgba(107,79,187,0.4)' }}>
+              {avatarLetter(data.username)}
             </div>
-            <div className="flex-1 min-w-0">
-              <h1 className="text-2xl font-bold text-white truncate">@{data.username}</h1>
-              <p className="text-gray-400 mt-0.5">
+            <div style={{ flex: 1, minWidth: 0 }}>
+              <h1 style={{ fontSize: 24, fontWeight: 800, color: '#FFFFFF', margin: 0 }}>@{data.username}</h1>
+              <p style={{ color: '#9B7FEB', marginTop: 4, fontSize: 15 }}>
                 {data.cards.length === 0
                   ? 'No cards listed for trade yet'
                   : `${data.cards.length} card${data.cards.length !== 1 ? 's' : ''} available for trade`}
               </p>
             </div>
             {data.cards.length > 0 && (
-              <button
-                onClick={handleCopy}
-                className="flex-shrink-0 flex items-center gap-2 bg-gray-800 hover:bg-gray-700 border border-gray-700 text-sm text-white px-4 py-2.5 rounded-xl transition-colors font-medium">
+              <button onClick={handleCopy}
+                style={{ flexShrink: 0, display: 'flex', alignItems: 'center', gap: 8, background: copied ? '#22C55E22' : '#2D1F5E', border: `1px solid ${copied ? '#22C55E' : '#4A2F9A'}`, color: copied ? '#22C55E' : '#C4B5FD', fontSize: 14, padding: '10px 18px', borderRadius: 12, cursor: 'pointer', fontWeight: 600, transition: 'all 0.2s' }}>
                 {copied ? '✓ Copied!' : '📋 Copy List'}
               </button>
             )}
@@ -163,101 +168,100 @@ export default function TradePage() {
         </div>
       </div>
 
-      <div className="max-w-4xl mx-auto px-4 py-6">
+      <div style={{ maxWidth: 900, margin: '0 auto', padding: '24px 20px' }}>
         {data.cards.length === 0 ? (
-          <div className="text-center py-20">
-            <div className="text-5xl mb-4">📭</div>
-            <p className="text-gray-400">This trainer hasn't listed any cards for trade yet.</p>
+          <div style={{ textAlign: 'center', padding: '80px 0' }}>
+            <div style={{ fontSize: 52, marginBottom: 16 }}>📭</div>
+            <p style={{ color: '#9B7FEB' }}>This trainer hasn't listed any cards for trade yet.</p>
           </div>
         ) : (
           <>
             {/* Search */}
-            <div className="mb-5">
-              <input
-                type="text"
-                placeholder="Search by name or set…"
-                value={search}
-                onChange={(e) => setSearch(e.target.value)}
-                className="w-full bg-gray-900 border border-gray-700 rounded-xl px-4 py-3 text-sm text-white placeholder-gray-500 outline-none focus:border-orange-500 transition-colors"
-              />
-            </div>
+            <input
+              type="text"
+              placeholder="Search by name or set…"
+              value={search}
+              onChange={(e) => setSearch(e.target.value)}
+              style={{ width: '100%', boxSizing: 'border-box', background: '#1A1030', border: '1px solid #2D1F5E', borderRadius: 12, padding: '13px 18px', fontSize: 14, color: '#FFFFFF', outline: 'none', marginBottom: 20 }}
+            />
 
-            {/* Count */}
             {search && (
-              <p className="text-xs text-gray-500 mb-4">
+              <p style={{ fontSize: 12, color: '#9B7FEB', marginBottom: 16 }}>
                 {filtered.length} of {data.cards.length} cards
               </p>
             )}
 
             {/* Card grid */}
-            <div className="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 gap-3">
-              {filtered.map((card) => (
-                <div key={card.collectionId}
-                     className="bg-gray-900 rounded-2xl overflow-hidden border border-gray-800 hover:border-gray-600 transition-colors group">
-                  {/* Card image */}
-                  <div className="aspect-[3/4] bg-gray-800 relative overflow-hidden">
-                    {card.imageUrl ? (
-                      <img
-                        src={card.imageUrl}
-                        alt={card.name}
-                        className="w-full h-full object-cover group-hover:scale-105 transition-transform duration-300"
-                        loading="lazy"
-                      />
-                    ) : (
-                      <div className="w-full h-full flex items-center justify-center text-gray-600 text-4xl">🃏</div>
-                    )}
-                    {/* Quantity badge */}
-                    {card.quantity > 1 && (
-                      <div className="absolute top-2 right-2 bg-orange-500 text-white text-xs font-bold px-2 py-0.5 rounded-full">
-                        ×{card.quantity}
-                      </div>
-                    )}
-                  </div>
-
-                  {/* Card info */}
-                  <div className="p-3">
-                    <p className="text-sm font-semibold text-white leading-tight line-clamp-2 mb-1">{card.name}</p>
-                    {card.setName && (
-                      <p className="text-xs text-gray-500 truncate mb-2">{card.setName}</p>
-                    )}
-                    <div className="flex items-center justify-between gap-1 flex-wrap">
-                      {card.rarity && (
-                        <span className="text-xs px-2 py-0.5 rounded-full font-medium"
-                              style={{ backgroundColor: rarityColor(card.rarity) + '22', color: rarityColor(card.rarity) }}>
-                          {rarityLabel(card.rarity)}
-                        </span>
+            <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fill, minmax(160px, 1fr))', gap: 12 }}>
+              {filtered.map((card) => {
+                const rc = RARITY_COLORS[card.rarity?.toLowerCase()] ?? RARITY_COLORS.common;
+                const cc = CONDITION_COLORS[card.condition] ?? '#9CA3AF';
+                return (
+                  <div key={card.collectionId}
+                       style={{ background: '#1A1030', borderRadius: 16, overflow: 'hidden', border: '1px solid #2D1F5E' }}>
+                    {/* Card image */}
+                    <div style={{ aspectRatio: '3/4', background: '#0F0B1A', position: 'relative', overflow: 'hidden' }}>
+                      {card.imageUrl ? (
+                        <img
+                          src={card.imageUrl}
+                          alt={card.name}
+                          style={{ width: '100%', height: '100%', objectFit: 'cover' }}
+                          loading="lazy"
+                        />
+                      ) : (
+                        <div style={{ width: '100%', height: '100%', display: 'flex', alignItems: 'center', justifyContent: 'center', fontSize: 40 }}>🃏</div>
                       )}
-                      {card.condition && (
-                        <span className="text-xs text-gray-500">{conditionLabel(card.condition)}</span>
+                      {card.quantity > 1 && (
+                        <div style={{ position: 'absolute', top: 8, right: 8, background: '#6B4FBB', color: '#fff', fontSize: 11, fontWeight: 700, padding: '3px 8px', borderRadius: 999 }}>
+                          ×{card.quantity}
+                        </div>
                       )}
                     </div>
+
+                    {/* Card info */}
+                    <div style={{ padding: '12px' }}>
+                      <p style={{ fontSize: 13, fontWeight: 700, color: '#FFFFFF', margin: '0 0 4px', lineHeight: 1.3, display: '-webkit-box', WebkitLineClamp: 2, WebkitBoxOrient: 'vertical', overflow: 'hidden' }}>{card.name}</p>
+                      {card.setName && (
+                        <p style={{ fontSize: 11, color: '#9B7FEB', margin: '0 0 8px', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>{card.setName}</p>
+                      )}
+                      <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', flexWrap: 'wrap', gap: 4 }}>
+                        {card.rarity && (
+                          <span style={{ fontSize: 11, padding: '3px 8px', borderRadius: 999, background: rc.bg, color: rc.text, fontWeight: 600 }}>
+                            {rarityLabel(card.rarity)}
+                          </span>
+                        )}
+                        {card.condition && (
+                          <span style={{ fontSize: 11, color: cc, fontWeight: 600 }}>{conditionLabel(card.condition)}</span>
+                        )}
+                      </div>
+                    </div>
                   </div>
-                </div>
-              ))}
+                );
+              })}
             </div>
 
             {filtered.length === 0 && search && (
-              <div className="text-center py-12 text-gray-500">No cards match "{search}"</div>
+              <div style={{ textAlign: 'center', padding: '48px 0', color: '#9B7FEB' }}>No cards match "{search}"</div>
             )}
           </>
         )}
 
         {/* Footer CTA */}
-        <div className="mt-12 rounded-2xl bg-gradient-to-br from-orange-500/10 to-orange-600/5 border border-orange-500/20 p-6 text-center">
-          <p className="text-white font-semibold mb-1">Want to trade with {data.username}?</p>
-          <p className="text-gray-400 text-sm mb-4">Download CardQuest TCG to manage your collection and share your own trade list.</p>
+        <div style={{ marginTop: 48, borderRadius: 20, background: 'linear-gradient(135deg, rgba(107,79,187,0.2), rgba(107,79,187,0.05))', border: '1px solid rgba(107,79,187,0.3)', padding: '32px 24px', textAlign: 'center' }}>
+          <p style={{ color: '#FFFFFF', fontWeight: 700, fontSize: 17, margin: '0 0 8px' }}>Want to trade with {data.username}?</p>
+          <p style={{ color: '#9B7FEB', fontSize: 14, margin: '0 0 20px' }}>Download CardQuest TCG to manage your collection and share your own trade list.</p>
           <a href="https://apps.apple.com/us/app/cardquest-tcg/id6745005042"
-             className="inline-block bg-orange-500 text-white px-6 py-3 rounded-full font-semibold text-sm hover:bg-orange-400 transition-colors shadow-lg shadow-orange-500/25">
+             style={{ display: 'inline-block', background: 'linear-gradient(135deg, #6B4FBB, #9B7FEB)', color: '#fff', padding: '14px 28px', borderRadius: 999, fontWeight: 700, fontSize: 15, textDecoration: 'none', boxShadow: '0 8px 24px rgba(107,79,187,0.4)' }}>
             Download on the App Store
           </a>
         </div>
       </div>
 
       {/* Footer */}
-      <footer className="border-t border-gray-800 mt-8">
-        <div className="max-w-4xl mx-auto px-4 py-6 flex flex-col sm:flex-row items-center justify-between gap-3 text-xs text-gray-600">
-          <p>© 2026 CardQuest TCG. All rights reserved.</p>
-          <p>Powered by <span className="text-orange-500">cardquesttcg.app</span></p>
+      <footer style={{ borderTop: '1px solid #2D1F5E', marginTop: 32 }}>
+        <div style={{ maxWidth: 900, margin: '0 auto', padding: '20px', display: 'flex', justifyContent: 'space-between', flexWrap: 'wrap', gap: 8, fontSize: 12, color: '#4A3A7A' }}>
+          <p style={{ margin: 0 }}>© 2026 CardQuest TCG. All rights reserved.</p>
+          <p style={{ margin: 0 }}>Powered by <span style={{ color: '#9B7FEB' }}>cardquesttcg.app</span></p>
         </div>
       </footer>
     </div>
