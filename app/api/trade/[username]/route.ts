@@ -23,7 +23,7 @@ export async function GET(
     return NextResponse.json({ error: 'User not found' }, { status: 404 });
   }
 
-  // 2. Fetch their for_trade cards
+  // 2. Fetch their for_trade physical cards (exclude pack pull simulations)
   const { data: cards, error: cardsError } = await supabase
     .from('collection')
     .select(`
@@ -37,11 +37,13 @@ export async function GET(
         card_number,
         rarity,
         raw_rarity,
-        image_url
+        image_url,
+        source
       )
     `)
     .eq('user_id', profile.id)
     .eq('for_trade', true)
+    .neq('cards.source', 'pack_pull')
     .order('id', { ascending: true });
 
   if (cardsError) {

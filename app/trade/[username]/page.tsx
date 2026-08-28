@@ -175,11 +175,12 @@ export default function TradePage() {
               {avatarLetter(data.username)}
             </div>
             <div style={{ flex: 1, minWidth: 0 }}>
-              <h1 style={{ fontSize: 24, fontWeight: 800, color: '#FFFFFF', margin: 0 }}>@{data.username}</h1>
-              <p style={{ color: '#9B7FEB', marginTop: 4, fontSize: 15 }}>
+              <h1 style={{ fontSize: 24, fontWeight: 800, color: '#FFFFFF', margin: '0 0 2px' }}>@{data.username}</h1>
+              <p style={{ color: '#9B7FEB', margin: '0 0 4px', fontSize: 15, fontWeight: 600 }}>Personal Card Trade List</p>
+              <p style={{ color: '#6B5FA0', margin: 0, fontSize: 13, fontStyle: 'italic' }}>
                 {data.cards.length === 0
-                  ? 'No cards listed for trade yet'
-                  : `${data.cards.length} card${data.cards.length !== 1 ? 's' : ''} available for trade`}
+                  ? 'No physical cards listed for trade yet'
+                  : `Physical cards @${data.username} is looking to trade`}
               </p>
             </div>
             {data.cards.length > 0 && (
@@ -193,6 +194,19 @@ export default function TradePage() {
       </div>
 
       <div style={{ maxWidth: 900, margin: '0 auto', padding: '24px 20px' }}>
+
+        {/* CTA banner — always at top */}
+        <div style={{ marginBottom: 24, borderRadius: 16, background: 'linear-gradient(135deg, rgba(107,79,187,0.2), rgba(107,79,187,0.05))', border: '1px solid rgba(107,79,187,0.3)', padding: '20px 24px', display: 'flex', flexWrap: 'wrap', alignItems: 'center', justifyContent: 'space-between', gap: 16 }}>
+          <div>
+            <p style={{ color: '#FFFFFF', fontWeight: 700, fontSize: 15, margin: '0 0 4px' }}>Want to trade with {data.username}?</p>
+            <p style={{ color: '#9B7FEB', fontSize: 13, margin: 0 }}>Download CardQuest TCG to manage your collection and share your own trade list.</p>
+          </div>
+          <a href="https://apps.apple.com/us/app/cardquest-tcg/id6745005042"
+             style={{ flexShrink: 0, display: 'inline-block', background: 'linear-gradient(135deg, #6B4FBB, #9B7FEB)', color: '#fff', padding: '11px 22px', borderRadius: 999, fontWeight: 700, fontSize: 14, textDecoration: 'none', boxShadow: '0 4px 16px rgba(107,79,187,0.4)', whiteSpace: 'nowrap' }}>
+            Download App
+          </a>
+        </div>
+
         {data.cards.length === 0 ? (
           <div style={{ textAlign: 'center', padding: '80px 0' }}>
             <div style={{ fontSize: 52, marginBottom: 16 }}>📭</div>
@@ -270,15 +284,6 @@ export default function TradePage() {
           </>
         )}
 
-        {/* Footer CTA */}
-        <div style={{ marginTop: 48, borderRadius: 20, background: 'linear-gradient(135deg, rgba(107,79,187,0.2), rgba(107,79,187,0.05))', border: '1px solid rgba(107,79,187,0.3)', padding: '32px 24px', textAlign: 'center' }}>
-          <p style={{ color: '#FFFFFF', fontWeight: 700, fontSize: 17, margin: '0 0 8px' }}>Want to trade with {data.username}?</p>
-          <p style={{ color: '#9B7FEB', fontSize: 14, margin: '0 0 20px' }}>Download CardQuest TCG to manage your collection and share your own trade list.</p>
-          <a href="https://apps.apple.com/us/app/cardquest-tcg/id6745005042"
-             style={{ display: 'inline-block', background: 'linear-gradient(135deg, #6B4FBB, #9B7FEB)', color: '#fff', padding: '14px 28px', borderRadius: 999, fontWeight: 700, fontSize: 15, textDecoration: 'none', boxShadow: '0 8px 24px rgba(107,79,187,0.4)' }}>
-            Download on the App Store
-          </a>
-        </div>
       </div>
 
       {/* Footer */}
