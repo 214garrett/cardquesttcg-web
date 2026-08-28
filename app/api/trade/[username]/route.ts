@@ -15,7 +15,7 @@ export async function GET(
   // 1. Look up the user by username
   const { data: profile, error: profileError } = await supabase
     .from('profiles')
-    .select('id, username, avatar_id')
+    .select('id, username, avatar_id, contact_info')
     .ilike('username', username)
     .single();
 
@@ -77,8 +77,9 @@ export async function GET(
   });
 
   return NextResponse.json({
-    username: profile.username,
-    avatarId: profile.avatar_id,
+    username:    profile.username,
+    avatarId:    profile.avatar_id,
+    contactInfo: profile.contact_info ?? null,
     cards: flat,
   });
 }

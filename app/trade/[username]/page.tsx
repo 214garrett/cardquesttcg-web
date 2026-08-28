@@ -18,12 +18,26 @@ interface TradeCard {
 interface TradeData {
   username: string;
   avatarId: number;
+  contactInfo: string | null;
   cards: TradeCard[];
 }
 
-// Maps raw TCG API rarity strings to display colors
-function getRarityStyle(raw: string | null, fallback: string): { text: string; bg: string; label: string } {
+// Maps raw TCG API rarity strings (or card name patterns) to display colors
+function getRarityStyle(raw: string | null, fallback: string, name?: string): { text: string; bg: string; label: string } {
+  // Check raw rarity first, then db fallback, then infer from card name
   const r = (raw ?? fallback ?? '').toLowerCase();
+  const n = (name ?? '').toLowerCase();
+
+  // Infer from name when rarity data is missing/wrong
+  const inferFromName = (): { text: string; bg: string; label: string } | null => {
+    if (n.includes(' vmax')) return { text: '#F59E0B', bg: 'rgba(245,158,11,0.15)', label: 'Rare VMAX' };
+    if (n.includes(' vstar')) return { text: '#F59E0B', bg: 'rgba(245,158,11,0.15)', label: 'Rare VSTAR' };
+    if (n.includes(' ex') || n.endsWith(' ex')) return { text: '#F59E0B', bg: 'rgba(245,158,11,0.15)', label: 'Ultra Rare' };
+    if (n.includes(' gx')) return { text: '#8B5CF6', bg: 'rgba(139,92,246,0.15)', label: 'Rare GX' };
+    if (n.includes(' v ') || n.endsWith(' v')) return { text: '#3B82F6', bg: 'rgba(59,130,246,0.15)', label: 'Rare V' };
+    return null;
+  };
+
   if (r.includes('secret') || r.includes('hyper'))
     return { text: '#EF4444', bg: 'rgba(239,68,68,0.15)', label: raw ?? 'Secret Rare' };
   if (r.includes('special illustration') || r.includes('special art'))
@@ -32,7 +46,7 @@ function getRarityStyle(raw: string | null, fallback: string): { text: string; b
     return { text: '#A78BFA', bg: 'rgba(167,139,250,0.15)', label: raw ?? 'Illustration Rare' };
   if (r.includes('vmax') || r.includes('vstar'))
     return { text: '#F59E0B', bg: 'rgba(245,158,11,0.15)', label: raw ?? 'Rare VMAX' };
-  if (r.includes('ultra') || r.includes(' ex') || r.includes('vex') || r.includes('rare ultra'))
+  if (r.includes('ultra') || r.includes(' ex') || r.includes('rare ultra'))
     return { text: '#F59E0B', bg: 'rgba(245,158,11,0.15)', label: raw ?? 'Ultra Rare' };
   if (r.includes('legendary') || r.includes('full art'))
     return { text: '#F59E0B', bg: 'rgba(245,158,11,0.15)', label: raw ?? 'Legendary' };
@@ -42,8 +56,16 @@ function getRarityStyle(raw: string | null, fallback: string): { text: string; b
     return { text: '#3B82F6', bg: 'rgba(59,130,246,0.15)', label: raw ?? 'Rare' };
   if (r.includes('uncommon'))
     return { text: '#10B981', bg: 'rgba(16,185,129,0.15)', label: raw ?? 'Uncommon' };
+
+  // If we'd show "Common" but the name suggests otherwise, infer from name
+  if (r.includes('common') || fallback === 'common' || !r) {
+    const inferred = inferFromName();
+    if (inferred) return inferred;
+  }
+
   if (r.includes('common'))
     return { text: '#9CA3AF', bg: 'rgba(156,163,175,0.15)', label: raw ?? 'Common' };
+
   // Fallback to the db rarity
   const db: Record<string, { text: string; bg: string }> = {
     rare_secret: { text: '#EF4444', bg: 'rgba(239,68,68,0.15)' },
@@ -53,7 +75,7 @@ function getRarityStyle(raw: string | null, fallback: string): { text: string; b
     rare:        { text: '#3B82F6', bg: 'rgba(59,130,246,0.15)' },
     uncommon:    { text: '#10B981', bg: 'rgba(16,185,129,0.15)' },
   };
-  const s = db[fallback] ?? { text: '#9CA3AF', bg: 'rgba(156,163,175,0.15)' };
+  const s = db[fallback] ?? inferFromName() ?? { text: '#9CA3AF', bg: 'rgba(156,163,175,0.15)' };
   return { ...s, label: raw ?? fallback ?? '' };
 }
 
@@ -182,6 +204,11 @@ export default function TradePage() {
                   ? 'No physical cards listed for trade yet'
                   : `Physical cards @${data.username} is looking to trade`}
               </p>
+              {data.contactInfo && (
+                <p style={{ color: '#C4B5FD', margin: '6px 0 0', fontSize: 13, fontWeight: 600 }}>
+                  💬 Contact: {data.contactInfo}
+                </p>
+              )}
             </div>
             {data.cards.length > 0 && (
               <button onClick={handleCopy}
@@ -232,7 +259,7 @@ export default function TradePage() {
             {/* Card grid */}
             <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fill, minmax(160px, 1fr))', gap: 12 }}>
               {filtered.map((card) => {
-                const rc = getRarityStyle(card.rawRarity, card.rarity);
+                const rc = getRarityStyle(card.rawRarity, card.rarity, card.name);
                 const cc = CONDITION_COLORS[card.condition] ?? '#9CA3AF';
                 return (
                   <div key={card.collectionId}
