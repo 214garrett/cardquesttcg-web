@@ -23,7 +23,7 @@ interface TradeData {
 }
 
 // Maps raw TCG API rarity strings (or card name patterns) to display colors
-function getRarityStyle(raw: string | null, fallback: string, name?: string): { text: string; bg: string; label: string } {
+function getRarityStyle(raw: string | null, fallback: string, name?: string, cardNumber?: string): { text: string; bg: string; label: string } {
   // Check raw rarity first, then db fallback, then infer from card name
   const r = (raw ?? fallback ?? '').toLowerCase();
   const n = (name ?? '').toLowerCase();
@@ -36,6 +36,20 @@ function getRarityStyle(raw: string | null, fallback: string, name?: string): { 
     if (n.includes(' gx')) return { text: '#8B5CF6', bg: 'rgba(139,92,246,0.15)', label: 'Rare GX' };
     if (n.includes(' v ') || n.endsWith(' v')) return { text: '#3B82F6', bg: 'rgba(59,130,246,0.15)', label: 'Rare V' };
     return null;
+  };
+
+  // Infer from card number: if numerator > denominator (e.g. 106/094), it's a special rarity
+  const inferFromCardNumber = (): { text: string; bg: string; label: string } | null => {
+    if (!cardNumber) return null;
+    const match = cardNumber.match(/^(\d+)\/(\d+)$/);
+    if (!match) return null;
+    const num = parseInt(match[1], 10);
+    const total = parseInt(match[2], 10);
+    if (num <= total) return null;
+    const gap = num - total;
+    // Larger gaps tend to be Special Illustration Rares or Hyper Rares
+    if (gap > 20) return { text: '#EC4899', bg: 'rgba(236,72,153,0.15)', label: 'Special Illustration Rare' };
+    return { text: '#A78BFA', bg: 'rgba(167,139,250,0.15)', label: 'Illustration Rare' };
   };
 
   if (r.includes('secret') || r.includes('hyper'))
@@ -57,8 +71,10 @@ function getRarityStyle(raw: string | null, fallback: string, name?: string): { 
   if (r.includes('uncommon'))
     return { text: '#10B981', bg: 'rgba(16,185,129,0.15)', label: raw ?? 'Uncommon' };
 
-  // If we'd show "Common" but the name suggests otherwise, infer from name
+  // If we'd show "Common" but the card number or name suggests otherwise, infer
   if (r.includes('common') || fallback === 'common' || !r) {
+    const fromNumber = inferFromCardNumber();
+    if (fromNumber) return fromNumber;
     const inferred = inferFromName();
     if (inferred) return inferred;
   }
@@ -75,7 +91,7 @@ function getRarityStyle(raw: string | null, fallback: string, name?: string): { 
     rare:        { text: '#3B82F6', bg: 'rgba(59,130,246,0.15)' },
     uncommon:    { text: '#10B981', bg: 'rgba(16,185,129,0.15)' },
   };
-  const s = db[fallback] ?? inferFromName() ?? { text: '#9CA3AF', bg: 'rgba(156,163,175,0.15)' };
+  const s = db[fallback] ?? inferFromCardNumber() ?? inferFromName() ?? { text: '#9CA3AF', bg: 'rgba(156,163,175,0.15)' };
   return { ...s, label: raw ?? fallback ?? '' };
 }
 
@@ -259,7 +275,7 @@ export default function TradePage() {
             {/* Card grid */}
             <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fill, minmax(160px, 1fr))', gap: 12 }}>
               {filtered.map((card) => {
-                const rc = getRarityStyle(card.rawRarity, card.rarity, card.name);
+                const rc = getRarityStyle(card.rawRarity, card.rarity, card.name, card.cardNumber);
                 const cc = CONDITION_COLORS[card.condition] ?? '#9CA3AF';
                 return (
                   <div key={card.collectionId}
