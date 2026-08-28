@@ -43,14 +43,15 @@ export async function GET(
     `)
     .eq('user_id', profile.id)
     .eq('for_trade', true)
-    .neq('cards.source', 'pack_pull')
     .order('id', { ascending: true });
 
   if (cardsError) {
     return NextResponse.json({ error: cardsError.message }, { status: 500 });
   }
 
-  const flat = (cards ?? []).map((item: any) => {
+  const flat = (cards ?? [])
+    .filter((item: any) => item.cards?.source !== 'pack_pull')
+    .map((item: any) => {
     // Construct image URL from card ID if image_url not stored
     // TCG API card IDs look like "sv1-1" → images.pokemontcg.io/sv1/1.png
     let imageUrl = item.cards?.image_url ?? null;
