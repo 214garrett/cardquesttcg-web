@@ -48,17 +48,30 @@ export async function GET(
     return NextResponse.json({ error: cardsError.message }, { status: 500 });
   }
 
-  const flat = (cards ?? []).map((item: any) => ({
-    collectionId: item.id,
-    quantity:     item.quantity,
-    condition:    item.condition,
-    name:         item.cards?.name,
-    setName:      item.cards?.set_name,
-    cardNumber:   item.cards?.card_number,
-    rarity:       item.cards?.rarity,
-    rawRarity:    item.cards?.raw_rarity ?? null,
-    imageUrl:     item.cards?.image_url ?? null,
-  }));
+  const flat = (cards ?? []).map((item: any) => {
+    // Construct image URL from card ID if image_url not stored
+    // TCG API card IDs look like "sv1-1" → images.pokemontcg.io/sv1/1.png
+    let imageUrl = item.cards?.image_url ?? null;
+    if (!imageUrl && item.cards?.id) {
+      const parts = item.cards.id.split('-');
+      if (parts.length >= 2) {
+        const setId = parts[0];
+        const num = parts.slice(1).join('-');
+        imageUrl = `https://images.pokemontcg.io/${setId}/${num}_hires.png`;
+      }
+    }
+    return {
+      collectionId: item.id,
+      quantity:     item.quantity,
+      condition:    item.condition,
+      name:         item.cards?.name,
+      setName:      item.cards?.set_name,
+      cardNumber:   item.cards?.card_number,
+      rarity:       item.cards?.rarity,
+      rawRarity:    item.cards?.raw_rarity ?? null,
+      imageUrl,
+    };
+  });
 
   return NextResponse.json({
     username: profile.username,
