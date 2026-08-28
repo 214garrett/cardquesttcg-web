@@ -141,8 +141,8 @@ export default function TradePage() {
         <div className="max-w-4xl mx-auto px-4 py-8">
           <div className="flex flex-col sm:flex-row items-start sm:items-center gap-5">
             {/* Avatar */}
-            <div className="w-16 h-16 rounded-2xl bg-gradient-to-br from-orange-500 to-orange-600 flex items-center justify-center text-2xl font-black flex-shrink-0 shadow-lg shadow-orange-500/20">
-              {data.username.charAt(0).toUpperCase()}
+            <div className="w-16 h-16 rounded-2xl bg-gradient-to-br from-orange-500 to-orange-600 flex items-center justify-center text-2xl font-black flex-shrink-0 shadow-lg shadow-orange-500/20 uppercase">
+              {data.username.replace(/^[^a-zA-Z]*/, '').charAt(0).toUpperCase() || data.username.charAt(0).toUpperCase()}
             </div>
             <div className="flex-1 min-w-0">
               <h1 className="text-2xl font-bold text-white truncate">@{data.username}</h1>
