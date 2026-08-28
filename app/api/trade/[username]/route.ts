@@ -8,9 +8,9 @@ const supabase = createClient(
 
 export async function GET(
   _req: NextRequest,
-  { params }: { params: { username: string } }
+  { params }: { params: Promise<{ username: string }> }
 ) {
-  const { username } = params;
+  const { username } = await params;
 
   // 1. Look up the user by username
   const { data: profile, error: profileError } = await supabase
