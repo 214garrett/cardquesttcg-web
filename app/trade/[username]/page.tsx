@@ -195,9 +195,9 @@ export default function TradePage() {
 
       {/* Header */}
       <header style={{ background: '#1A1030', borderBottom: '1px solid #2D1F5E', position: 'sticky', top: 0, zIndex: 10 }}>
-        <div style={{ maxWidth: 900, margin: '0 auto', padding: '14px 20px', display: 'flex', alignItems: 'center', gap: 12 }}>
-          <div style={{ width: 32, height: 32, background: 'linear-gradient(135deg, #6B4FBB, #9B7FEB)', borderRadius: 8, display: 'flex', alignItems: 'center', justifyContent: 'center', fontWeight: 900, fontSize: 15, color: '#fff' }}>C</div>
-          <span style={{ fontWeight: 700, fontSize: 14, color: '#9B7FEB', letterSpacing: '0.08em', textTransform: 'uppercase' }}>CardQuest TCG</span>
+        <div style={{ maxWidth: 900, margin: '0 auto', padding: '14px 20px', display: 'flex', alignItems: 'center', gap: 10 }}>
+          <img src="/icon.png" alt="CardQuest TCG" style={{ width: 32, height: 32, borderRadius: 8 }} />
+          <span style={{ fontWeight: 800, fontSize: 15, color: '#FFFFFF', letterSpacing: '0.04em' }}>CardQuest <span style={{ color: '#9B7FEB' }}>TCG</span></span>
           <div style={{ marginLeft: 'auto' }}>
             <a href="https://apps.apple.com/us/app/cardquest-tcg/id6745005042"
                style={{ background: '#6B4FBB', color: '#fff', padding: '8px 16px', borderRadius: 999, fontSize: 13, fontWeight: 600, textDecoration: 'none' }}>
