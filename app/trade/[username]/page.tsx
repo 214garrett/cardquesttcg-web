@@ -23,7 +23,7 @@ interface TradeData {
 }
 
 // Maps raw TCG API rarity strings (or card name patterns) to display colors
-function getRarityStyle(raw: string | null, fallback: string, name?: string, cardNumber?: string): { text: string; bg: string; label: string } {
+function getRarityStyle(raw: string | null, fallback: string, name?: string, cardNumber?: string): { text: string; bg: string; label: string } | null {
   // Check raw rarity first, then db fallback, then infer from card name
   const r = (raw ?? fallback ?? '').toLowerCase();
   const n = (name ?? '').toLowerCase();
@@ -77,8 +77,8 @@ function getRarityStyle(raw: string | null, fallback: string, name?: string, car
     if (fromNumber) return fromNumber;
     const inferred = inferFromName();
     if (inferred) return inferred;
-    // If raw_rarity is null we have no reliable rarity data — don't falsely label it "Common"
-    if (!raw) return { text: '#6B7280', bg: 'rgba(107,114,128,0.1)', label: '?' };
+    // If raw_rarity is null we have no reliable rarity data — hide the badge entirely
+    if (!raw) return null;
   }
 
   if (r.includes('common'))
@@ -308,7 +308,7 @@ export default function TradePage() {
                         <p style={{ fontSize: 11, color: '#9B7FEB', margin: '0 0 8px', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>{card.setName}</p>
                       )}
                       <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', flexWrap: 'wrap', gap: 4 }}>
-                        {card.rarity && (
+                        {rc && (
                           <span style={{ fontSize: 11, padding: '3px 8px', borderRadius: 999, background: rc.bg, color: rc.text, fontWeight: 600 }}>
                             {rc.label}
                           </span>
