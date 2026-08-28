@@ -6,6 +6,20 @@ const supabase = createClient(
   process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY!
 );
 
+/** Fetch the rarity string for a card directly from the Pokemon TCG API. */
+async function fetchRarityFromTCGApi(cardId: string): Promise<string | null> {
+  try {
+    const res = await fetch(`https://api.pokemontcg.io/v2/cards/${cardId}`, {
+      next: { revalidate: 86400 }, // cache 24 hours
+    });
+    if (!res.ok) return null;
+    const json = await res.json();
+    return json?.data?.rarity ?? null;
+  } catch {
+    return null;
+  }
+}
+
 export async function GET(
   _req: NextRequest,
   { params }: { params: Promise<{ username: string }> }
@@ -49,11 +63,21 @@ export async function GET(
     return NextResponse.json({ error: cardsError.message }, { status: 500 });
   }
 
-  const flat = (cards ?? [])
-    .filter((item: any) => item.cards?.source !== 'pack_pull')
-    .map((item: any) => {
-    // Construct image URL from card ID if image_url not stored
-    // TCG API card IDs look like "sv1-1" → images.pokemontcg.io/sv1/1.png
+  const physical = (cards ?? []).filter(
+    (item: any) => item.cards?.source !== 'pack_pull'
+  );
+
+  // 3. For cards missing raw_rarity, look them up from the TCG API in parallel
+  const rarityLookups = await Promise.all(
+    physical.map(async (item: any) => {
+      if (item.cards?.raw_rarity) return item.cards.raw_rarity;
+      if (item.cards?.id) return fetchRarityFromTCGApi(item.cards.id);
+      return null;
+    })
+  );
+
+  // 4. Flatten with resolved rarities and image URLs
+  const flat = physical.map((item: any, i: number) => {
     let imageUrl = item.cards?.image_url ?? null;
     if (!imageUrl && item.cards?.id) {
       const parts = item.cards.id.split('-');
@@ -71,7 +95,7 @@ export async function GET(
       setName:      item.cards?.set_name,
       cardNumber:   item.cards?.card_number,
       rarity:       item.cards?.rarity,
-      rawRarity:    item.cards?.raw_rarity ?? null,
+      rawRarity:    rarityLookups[i] ?? null,
       imageUrl,
     };
   });
