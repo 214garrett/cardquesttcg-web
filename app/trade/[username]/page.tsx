@@ -77,6 +77,8 @@ function getRarityStyle(raw: string | null, fallback: string, name?: string, car
     if (fromNumber) return fromNumber;
     const inferred = inferFromName();
     if (inferred) return inferred;
+    // If raw_rarity is null we have no reliable rarity data — don't falsely label it "Common"
+    if (!raw) return { text: '#6B7280', bg: 'rgba(107,114,128,0.1)', label: '?' };
   }
 
   if (r.includes('common'))
