@@ -15,55 +15,97 @@ interface TCGCardData {
   rarity?: string;
   set?: { symbolUrl?: string; logoUrl?: string; name?: string };
   tcgplayer?: { prices?: Record<string, { market?: number; mid?: number }> };
+  cardmarket?: { prices?: { avg30?: number; trendPrice?: number; averageSellPrice?: number } };
 }
 
 /** Best market price from TCGPlayer prices object */
 function bestPrice(prices?: Record<string, { market?: number; mid?: number }>): number | null {
   if (!prices) return null;
-  // Prefer: special illustration > holofoil > normal > 1st edition
-  const order = ['specialIllustrationRare', 'illustrationRare', 'hyperRare', 'holofoil', 'reverseHolofoil', 'normal', '1stEditionHolofoil', '1stEditionNormal'];
+  const order = [
+    'specialIllustrationRare', 'illustrationRare', 'hyperRare',
+    'holofoil', 'reverseHolofoil', 'normal',
+    '1stEditionHolofoil', '1stEditionNormal',
+  ];
   for (const key of order) {
     const p = prices[key];
     if (p?.market) return p.market;
     if (p?.mid) return p.mid;
   }
-  // fallback: first available
   for (const p of Object.values(prices)) {
     if (p?.market) return p.market;
   }
   return null;
 }
 
-/** Layer 1: direct card ID lookup — returns rarity, symbolUrl, price */
+/** Best cardmarket price (fallback when TCGPlayer has no data) */
+function cardmarketPrice(cm?: { prices?: { avg30?: number; trendPrice?: number; averageSellPrice?: number } }): number | null {
+  const p = cm?.prices;
+  if (!p) return null;
+  return p.averageSellPrice ?? p.avg30 ?? p.trendPrice ?? null;
+}
+
+/** Fetch with retry on empty/rate-limit response */
+async function tcgFetch(url: string, retries = 2): Promise<any | null> {
+  for (let attempt = 0; attempt <= retries; attempt++) {
+    try {
+      if (attempt > 0) await new Promise(r => setTimeout(r, 600 * attempt));
+      const res = await fetch(url, {
+        headers: TCG_HEADERS,
+        next: { revalidate: 86400 },
+      });
+      if (!res.ok) return null;
+      const text = await res.text();
+      if (!text?.trim()) {
+        // rate-limited or empty — wait and retry
+        if (attempt < retries) await new Promise(r => setTimeout(r, 800));
+        continue;
+      }
+      return JSON.parse(text);
+    } catch { return null; }
+  }
+  return null;
+}
+
+/** Layer 1: direct card ID lookup */
 async function fetchByCardId(cardId: string): Promise<TCGCardData | null> {
-  try {
-    const res = await fetch(`${TCG_BASE}/cards/${cardId}`, {
-      headers: TCG_HEADERS,
-      next: { revalidate: 86400 },
-    });
-    if (!res.ok) return null;
-    const json = await res.json();
-    return json?.data ?? null;
-  } catch { return null; }
+  const json = await tcgFetch(`${TCG_BASE}/cards/${cardId}`);
+  return json?.data ?? null;
 }
 
 /** Layer 2: search by name + set name */
-async function fetchBySearch(name: string, setName: string | null, cardNumber: string | null): Promise<TCGCardData | null> {
-  try {
-    const q = `name:"${name}"${setName ? ` set.name:"${setName}"` : ''}`;
-    const res = await fetch(`${TCG_BASE}/cards?q=${encodeURIComponent(q)}&pageSize=20`, {
-      headers: TCG_HEADERS,
-      next: { revalidate: 86400 },
-    });
-    if (!res.ok) return null;
-    const json = await res.json();
-    const cards: any[] = json?.data ?? [];
-    if (!cards.length) return null;
-    const wantedNum = (cardNumber ?? '').split('/')[0].trim();
-    return wantedNum
-      ? (cards.find(c => c.number?.split('/')[0]?.trim() === wantedNum) ?? cards[0])
-      : cards[0];
-  } catch { return null; }
+async function fetchBySearch(
+  name: string,
+  setName: string | null,
+  cardNumber: string | null,
+): Promise<TCGCardData | null> {
+  // Sanitize: escape apostrophes and quotes that break the query
+  const safeName = name.replace(/"/g, '').replace(/'/g, '');
+  const safeSet  = (setName ?? '').replace(/"/g, '').replace(/'/g, '');
+
+  const q = `name:"${safeName}"${safeSet ? ` set.name:"${safeSet}"` : ''}`;
+  const json = await tcgFetch(`${TCG_BASE}/cards?q=${encodeURIComponent(q)}&pageSize=20`);
+  const cards: any[] = json?.data ?? [];
+  if (!cards.length) return null;
+
+  const wantedNum = (cardNumber ?? '').split('/')[0].trim();
+  return wantedNum
+    ? (cards.find(c => c.number?.split('/')[0]?.trim() === wantedNum) ?? cards[0])
+    : cards[0];
+}
+
+/** Layer 3: name-only search (no set restriction) — last resort */
+async function fetchByNameOnly(name: string, cardNumber: string | null): Promise<TCGCardData | null> {
+  const safeName = name.replace(/"/g, '').replace(/'/g, '');
+  const json = await tcgFetch(`${TCG_BASE}/cards?q=${encodeURIComponent(`name:"${safeName}"`)}&pageSize=20&orderBy=-set.releaseDate`);
+  const cards: any[] = json?.data ?? [];
+  if (!cards.length) return null;
+
+  const wantedNum = (cardNumber ?? '').split('/')[0].trim();
+  if (wantedNum) {
+    const exact = cards.find(c => c.number?.split('/')[0]?.trim() === wantedNum);
+    if (exact) return exact;
+  }
+  return cards[0];
 }
 
 async function resolveCardData(
@@ -75,14 +117,46 @@ async function resolveCardData(
 ): Promise<{ rarity: string | null; symbolUrl: string | null; marketPrice: number | null }> {
   let data: TCGCardData | null = null;
 
+  // Layer 1: direct ID
   if (cardId) data = await fetchByCardId(cardId);
-  if (!data && name) data = await fetchBySearch(name, setName, cardNumber);
+
+  // Layer 2: name + set search
+  if (!data?.tcgplayer?.prices && !data?.cardmarket?.prices) {
+    const searched = await fetchBySearch(name, setName, cardNumber);
+    if (searched) data = searched;
+  }
+
+  // Layer 3: name-only (set name may not match pokemontcg.io exactly)
+  if (!data?.tcgplayer?.prices && !data?.cardmarket?.prices) {
+    const nameOnly = await fetchByNameOnly(name, cardNumber);
+    if (nameOnly) data = data ? { ...nameOnly, ...data } : nameOnly;
+  }
+
+  const price = bestPrice(data?.tcgplayer?.prices) ?? cardmarketPrice(data?.cardmarket) ?? null;
 
   return {
     rarity:      raw_rarity ?? data?.rarity ?? null,
     symbolUrl:   data?.set?.symbolUrl ?? null,
-    marketPrice: bestPrice(data?.tcgplayer?.prices) ?? null,
+    marketPrice: price,
   };
+}
+
+/** Throttle: process cards with a small delay between each to avoid rate limits */
+async function resolveSequential(items: any[]): Promise<any[]> {
+  const results = [];
+  for (let i = 0; i < items.length; i++) {
+    const item = items[i];
+    if (i > 0) await new Promise(r => setTimeout(r, 200)); // 200ms between requests
+    const r = await resolveCardData(
+      item.cards?.raw_rarity ?? null,
+      item.cards?.id ?? null,
+      item.cards?.name ?? '',
+      item.cards?.set_name ?? null,
+      item.cards?.card_number ?? null,
+    );
+    results.push(r);
+  }
+  return results;
 }
 
 export async function GET(
@@ -117,18 +191,8 @@ export async function GET(
 
   const physical = (cards ?? []).filter((item: any) => item.cards?.source !== 'pack_pull');
 
-  // Resolve rarity + price + set symbol in parallel
-  const resolved = await Promise.all(
-    physical.map((item: any) =>
-      resolveCardData(
-        item.cards?.raw_rarity ?? null,
-        item.cards?.id ?? null,
-        item.cards?.name ?? '',
-        item.cards?.set_name ?? null,
-        item.cards?.card_number ?? null,
-      )
-    )
-  );
+  // Sequential resolution with throttle to avoid rate limiting pokemontcg.io
+  const resolved = await resolveSequential(physical);
 
   const flat = physical.map((item: any, i: number) => {
     let imageUrl = item.cards?.image_url ?? null;
