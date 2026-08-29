@@ -178,7 +178,7 @@ export default function TradePage() {
         <div style={{ fontSize: 56, marginBottom: 16 }}>🃏</div>
         <h1 style={{ color: '#FFFFFF', fontSize: 22, fontWeight: 700, marginBottom: 8 }}>Trainer Not Found</h1>
         <p style={{ color: '#9B7FEB' }}>No trade list found for <span style={{ color: '#F4A261' }}>@{username}</span></p>
-        <a href="https://apps.apple.com/us/app/cardquest-tcg/id6745005042"
+        <a href="https://apps.apple.com/us/app/cardquest-tcg/id6789381374"
            style={{ display: 'inline-block', marginTop: 24, background: '#6B4FBB', color: '#fff', padding: '12px 24px', borderRadius: 999, fontSize: 14, fontWeight: 600, textDecoration: 'none' }}>
           Get CardQuest TCG
         </a>
@@ -209,7 +209,7 @@ export default function TradePage() {
               style={{ background: 'rgba(107,79,187,0.25)', border: '1px solid rgba(107,79,187,0.4)', color: '#C4B5FD', padding: '8px 14px', borderRadius: 999, fontSize: 13, fontWeight: 600, cursor: 'pointer', display: 'flex', alignItems: 'center', gap: 6 }}>
               {shared ? '✓ Copied!' : '🔗 Share'}
             </button>
-            <a href="https://apps.apple.com/us/app/cardquest-tcg/id6745005042"
+            <a href="https://apps.apple.com/us/app/cardquest-tcg/id6789381374"
                style={{ background: '#6B4FBB', color: '#fff', padding: '8px 16px', borderRadius: 999, fontSize: 13, fontWeight: 600, textDecoration: 'none' }}>
               Download
             </a>
@@ -273,7 +273,7 @@ export default function TradePage() {
             <p style={{ color: '#FFFFFF', fontWeight: 700, fontSize: 15, margin: '0 0 4px' }}>Want to trade with {data.username}?</p>
             <p style={{ color: '#9B7FEB', fontSize: 13, margin: 0 }}>Download CardQuest TCG to manage your collection and share your own trade list.</p>
           </div>
-          <a href="https://apps.apple.com/us/app/cardquest-tcg/id6745005042"
+          <a href="https://apps.apple.com/us/app/cardquest-tcg/id6789381374"
              style={{ flexShrink: 0, display: 'inline-block', background: 'linear-gradient(135deg, #6B4FBB, #9B7FEB)', color: '#fff', padding: '11px 22px', borderRadius: 999, fontWeight: 700, fontSize: 14, textDecoration: 'none', boxShadow: '0 4px 16px rgba(107,79,187,0.4)', whiteSpace: 'nowrap' }}>
             Download App
           </a>
@@ -284,7 +284,7 @@ export default function TradePage() {
             <div style={{ fontSize: 64, marginBottom: 20 }}>📭</div>
             <h2 style={{ color: '#FFFFFF', fontSize: 20, fontWeight: 700, marginBottom: 8 }}>No Cards Listed Yet</h2>
             <p style={{ color: '#9B7FEB', marginBottom: 24 }}>This trainer hasn't added any cards to their trade list.</p>
-            <a href="https://apps.apple.com/us/app/cardquest-tcg/id6745005042"
+            <a href="https://apps.apple.com/us/app/cardquest-tcg/id6789381374"
                style={{ display: 'inline-block', background: '#6B4FBB', color: '#fff', padding: '12px 24px', borderRadius: 999, fontSize: 14, fontWeight: 600, textDecoration: 'none' }}>
               Get CardQuest TCG
             </a>

@@ -9,7 +9,7 @@ export default function Home() {
         The premium Pokémon TCG collection tracker. Track, grade, and trade your cards.
       </p>
       <a
-        href="https://apps.apple.com/us/app/cardquest-tcg/id6745005042"
+        href="https://apps.apple.com/us/app/cardquest-tcg/id6789381374"
         className="bg-purple-700 text-white px-6 py-3 rounded-full font-semibold hover:bg-purple-600 transition-colors shadow-lg shadow-purple-700/40"
       >
         Download on the App Store
