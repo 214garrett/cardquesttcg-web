@@ -60,7 +60,7 @@ async function tcgFetch(url: string, retries = 2): Promise<any | null> {
 
   for (let attempt = 0; attempt <= retries; attempt++) {
     try {
-      if (attempt > 0) await new Promise(r => setTimeout(r, 600 * attempt));
+      if (attempt > 0) await new Promise(r => setTimeout(r, 300 * attempt));
       const res = await fetch(url, {
         headers: TCG_HEADERS,
         cache: 'no-store', // Always fetch fresh — we control caching ourselves
@@ -68,7 +68,7 @@ async function tcgFetch(url: string, retries = 2): Promise<any | null> {
       if (!res.ok) return null;
       const text = await res.text();
       if (!text?.trim()) {
-        if (attempt < retries) await new Promise(r => setTimeout(r, 800));
+        if (attempt < retries) await new Promise(r => setTimeout(r, 300));
         continue;
       }
       const data = JSON.parse(text);
@@ -217,6 +217,10 @@ async function resolveCardData(
   let meta: TCGCardData | null = null;  // rarity + symbolUrl source
   let priceData: TCGCardData | null = null; // price source
 
+  // Kick off tcgcsv.com lookup immediately in parallel — it doesn't rate limit
+  // and is the most reliable source for all sets including Japanese/special.
+  const csvPricePromise = fetchTcgCsvPrice(name, setName, cardNumber);
+
   // Layer 1: direct card ID — best source for rarity/symbol
   if (cardId) {
     const d = await fetchByCardId(cardId);
@@ -244,12 +248,10 @@ async function resolveCardData(
     }
   }
 
-  // Layer 4: tcgcsv.com — free TCGPlayer mirror, covers all sets including special/international
-  let csvPrice: number | null = null;
-  if (!priceData) {
-    csvPrice = await fetchTcgCsvPrice(name, setName, cardNumber);
-  }
+  // Await the tcgcsv price (was already running in parallel — little/no extra wait)
+  const csvPrice = await csvPricePromise;
 
+  // Prefer pokemontcg.io price when available; fall back to tcgcsv
   const price = bestPrice(priceData?.tcgplayer?.prices) ?? cardmarketPrice(priceData?.cardmarket) ?? csvPrice ?? null;
 
   return {
