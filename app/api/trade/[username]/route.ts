@@ -11,6 +11,10 @@ const TCG_HEADERS: Record<string, string> = process.env.TCG_API_KEY
   ? { 'X-Api-Key': process.env.TCG_API_KEY }
   : {};
 
+// Module-level in-memory cache — survives across requests within a Vercel instance
+// Avoids stale Next.js fetch cache issues; TTL = 2 hours
+const _tcgCache = new Map<string, { data: any; expires: number }>();
+
 interface TCGCardData {
   rarity?: string;
   set?: { symbolUrl?: string; logoUrl?: string; name?: string };
@@ -44,23 +48,30 @@ function cardmarketPrice(cm?: { prices?: { avg30?: number; trendPrice?: number; 
   return p.averageSellPrice ?? p.avg30 ?? p.trendPrice ?? null;
 }
 
-/** Fetch with retry on empty/rate-limit response */
+/** Fetch with retry on empty/rate-limit response + in-memory cache */
 async function tcgFetch(url: string, retries = 2): Promise<any | null> {
+  // Check in-memory cache first (bypasses stale Next.js fetch cache)
+  const now = Date.now();
+  const cached = _tcgCache.get(url);
+  if (cached && cached.expires > now) return cached.data;
+
   for (let attempt = 0; attempt <= retries; attempt++) {
     try {
       if (attempt > 0) await new Promise(r => setTimeout(r, 600 * attempt));
       const res = await fetch(url, {
         headers: TCG_HEADERS,
-        next: { revalidate: 86400 },
+        cache: 'no-store', // Always fetch fresh — we control caching ourselves
       });
       if (!res.ok) return null;
       const text = await res.text();
       if (!text?.trim()) {
-        // rate-limited or empty — wait and retry
         if (attempt < retries) await new Promise(r => setTimeout(r, 800));
         continue;
       }
-      return JSON.parse(text);
+      const data = JSON.parse(text);
+      // Cache successful responses for 2 hours
+      _tcgCache.set(url, { data, expires: now + 7200000 });
+      return data;
     } catch { return null; }
   }
   return null;
