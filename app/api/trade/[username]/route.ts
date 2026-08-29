@@ -108,6 +108,15 @@ async function fetchByNameOnly(name: string, cardNumber: string | null): Promise
   return cards[0];
 }
 
+function hasPrices(d: TCGCardData | null): boolean {
+  if (!d) return false;
+  const tp = d.tcgplayer?.prices;
+  if (tp && Object.keys(tp).length > 0) return true;
+  const cm = d.cardmarket?.prices;
+  if (cm && Object.values(cm).some(v => v != null)) return true;
+  return false;
+}
+
 async function resolveCardData(
   raw_rarity: string | null,
   cardId: string | null,
@@ -115,28 +124,41 @@ async function resolveCardData(
   setName: string | null,
   cardNumber: string | null,
 ): Promise<{ rarity: string | null; symbolUrl: string | null; marketPrice: number | null }> {
-  let data: TCGCardData | null = null;
+  let meta: TCGCardData | null = null;  // rarity + symbolUrl source
+  let priceData: TCGCardData | null = null; // price source
 
-  // Layer 1: direct ID
-  if (cardId) data = await fetchByCardId(cardId);
-
-  // Layer 2: name + set search
-  if (!data?.tcgplayer?.prices && !data?.cardmarket?.prices) {
-    const searched = await fetchBySearch(name, setName, cardNumber);
-    if (searched) data = searched;
+  // Layer 1: direct card ID — best source for rarity/symbol
+  if (cardId) {
+    const d = await fetchByCardId(cardId);
+    if (d) {
+      meta = d;
+      if (hasPrices(d)) priceData = d;
+    }
   }
 
-  // Layer 3: name-only (set name may not match pokemontcg.io exactly)
-  if (!data?.tcgplayer?.prices && !data?.cardmarket?.prices) {
-    const nameOnly = await fetchByNameOnly(name, cardNumber);
-    if (nameOnly) data = data ? { ...nameOnly, ...data } : nameOnly;
+  // Layer 2: name + set search — finds correct variant by card number
+  if (!priceData) {
+    const d = await fetchBySearch(name, setName, cardNumber);
+    if (d) {
+      if (!meta) meta = d;
+      if (hasPrices(d)) priceData = d;
+    }
   }
 
-  const price = bestPrice(data?.tcgplayer?.prices) ?? cardmarketPrice(data?.cardmarket) ?? null;
+  // Layer 3: name-only search — last resort, set name may not match pokemontcg.io
+  if (!priceData) {
+    const d = await fetchByNameOnly(name, cardNumber);
+    if (d) {
+      if (!meta) meta = d;
+      if (hasPrices(d)) priceData = d;
+    }
+  }
+
+  const price = bestPrice(priceData?.tcgplayer?.prices) ?? cardmarketPrice(priceData?.cardmarket) ?? null;
 
   return {
-    rarity:      raw_rarity ?? data?.rarity ?? null,
-    symbolUrl:   data?.set?.symbolUrl ?? null,
+    rarity:      raw_rarity ?? meta?.rarity ?? null,
+    symbolUrl:   meta?.set?.symbolUrl ?? null,
     marketPrice: price,
   };
 }
