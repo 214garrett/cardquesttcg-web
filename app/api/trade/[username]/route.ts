@@ -110,10 +110,9 @@ async function fetchByNameOnly(name: string, cardNumber: string | null): Promise
 
 function hasPrices(d: TCGCardData | null): boolean {
   if (!d) return false;
-  const tp = d.tcgplayer?.prices;
-  if (tp && Object.keys(tp).length > 0) return true;
-  const cm = d.cardmarket?.prices;
-  if (cm && Object.values(cm).some(v => v != null)) return true;
+  // Only true when there's an actual non-null price value — not just keys
+  if (bestPrice(d.tcgplayer?.prices) != null) return true;
+  if (cardmarketPrice(d.cardmarket) != null) return true;
   return false;
 }
 
