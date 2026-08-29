@@ -11,8 +11,31 @@ const TCG_HEADERS: Record<string, string> = process.env.TCG_API_KEY
   ? { 'X-Api-Key': process.env.TCG_API_KEY }
   : {};
 
-/** Layer 1: direct card ID lookup */
-async function rarityById(cardId: string): Promise<string | null> {
+interface TCGCardData {
+  rarity?: string;
+  set?: { symbolUrl?: string; logoUrl?: string; name?: string };
+  tcgplayer?: { prices?: Record<string, { market?: number; mid?: number }> };
+}
+
+/** Best market price from TCGPlayer prices object */
+function bestPrice(prices?: Record<string, { market?: number; mid?: number }>): number | null {
+  if (!prices) return null;
+  // Prefer: special illustration > holofoil > normal > 1st edition
+  const order = ['specialIllustrationRare', 'illustrationRare', 'hyperRare', 'holofoil', 'reverseHolofoil', 'normal', '1stEditionHolofoil', '1stEditionNormal'];
+  for (const key of order) {
+    const p = prices[key];
+    if (p?.market) return p.market;
+    if (p?.mid) return p.mid;
+  }
+  // fallback: first available
+  for (const p of Object.values(prices)) {
+    if (p?.market) return p.market;
+  }
+  return null;
+}
+
+/** Layer 1: direct card ID lookup — returns rarity, symbolUrl, price */
+async function fetchByCardId(cardId: string): Promise<TCGCardData | null> {
   try {
     const res = await fetch(`${TCG_BASE}/cards/${cardId}`, {
       headers: TCG_HEADERS,
@@ -20,12 +43,12 @@ async function rarityById(cardId: string): Promise<string | null> {
     });
     if (!res.ok) return null;
     const json = await res.json();
-    return json?.data?.rarity ?? null;
+    return json?.data ?? null;
   } catch { return null; }
 }
 
-/** Layer 2: search by name + set name, pick best match by card number */
-async function rarityBySearch(name: string, setName: string | null, cardNumber: string | null): Promise<string | null> {
+/** Layer 2: search by name + set name */
+async function fetchBySearch(name: string, setName: string | null, cardNumber: string | null): Promise<TCGCardData | null> {
   try {
     const q = `name:"${name}"${setName ? ` set.name:"${setName}"` : ''}`;
     const res = await fetch(`${TCG_BASE}/cards?q=${encodeURIComponent(q)}&pageSize=20`, {
@@ -36,37 +59,30 @@ async function rarityBySearch(name: string, setName: string | null, cardNumber: 
     const json = await res.json();
     const cards: any[] = json?.data ?? [];
     if (!cards.length) return null;
-
-    // Pick the card whose number matches, or fall back to first result
     const wantedNum = (cardNumber ?? '').split('/')[0].trim();
-    const match = wantedNum
-      ? cards.find(c => c.number?.split('/')[0]?.trim() === wantedNum) ?? cards[0]
+    return wantedNum
+      ? (cards.find(c => c.number?.split('/')[0]?.trim() === wantedNum) ?? cards[0])
       : cards[0];
-    return match?.rarity ?? null;
   } catch { return null; }
 }
 
-/** Resolve rarity using all available sources in order */
-async function resolveRarity(
+async function resolveCardData(
   raw_rarity: string | null,
   cardId: string | null,
   name: string,
   setName: string | null,
   cardNumber: string | null,
-): Promise<string | null> {
-  // Layer 1: already stored
-  if (raw_rarity) return raw_rarity;
-  // Layer 2: direct ID lookup
-  if (cardId) {
-    const byId = await rarityById(cardId);
-    if (byId) return byId;
-  }
-  // Layer 3: search by name + set
-  if (name) {
-    const bySearch = await rarityBySearch(name, setName, cardNumber);
-    if (bySearch) return bySearch;
-  }
-  return null;
+): Promise<{ rarity: string | null; symbolUrl: string | null; marketPrice: number | null }> {
+  let data: TCGCardData | null = null;
+
+  if (cardId) data = await fetchByCardId(cardId);
+  if (!data && name) data = await fetchBySearch(name, setName, cardNumber);
+
+  return {
+    rarity:      raw_rarity ?? data?.rarity ?? null,
+    symbolUrl:   data?.set?.symbolUrl ?? null,
+    marketPrice: bestPrice(data?.tcgplayer?.prices) ?? null,
+  };
 }
 
 export async function GET(
@@ -75,7 +91,6 @@ export async function GET(
 ) {
   const { username } = await params;
 
-  // 1. Look up the user by username
   const { data: profile, error: profileError } = await supabase
     .from('profiles')
     .select('id, username, avatar_id, contact_info')
@@ -86,23 +101,11 @@ export async function GET(
     return NextResponse.json({ error: 'User not found' }, { status: 404 });
   }
 
-  // 2. Fetch their for_trade physical cards
   const { data: cards, error: cardsError } = await supabase
     .from('collection')
     .select(`
-      id,
-      quantity,
-      condition,
-      cards (
-        id,
-        name,
-        set_name,
-        card_number,
-        rarity,
-        raw_rarity,
-        image_url,
-        source
-      )
+      id, quantity, condition,
+      cards ( id, name, set_name, card_number, rarity, raw_rarity, image_url, source )
     `)
     .eq('user_id', profile.id)
     .eq('for_trade', true)
@@ -112,14 +115,12 @@ export async function GET(
     return NextResponse.json({ error: cardsError.message }, { status: 500 });
   }
 
-  const physical = (cards ?? []).filter(
-    (item: any) => item.cards?.source !== 'pack_pull'
-  );
+  const physical = (cards ?? []).filter((item: any) => item.cards?.source !== 'pack_pull');
 
-  // 3. Resolve rarity for each card using 3-layer fallback (parallel)
-  const rarityLookups = await Promise.all(
+  // Resolve rarity + price + set symbol in parallel
+  const resolved = await Promise.all(
     physical.map((item: any) =>
-      resolveRarity(
+      resolveCardData(
         item.cards?.raw_rarity ?? null,
         item.cards?.id ?? null,
         item.cards?.name ?? '',
@@ -129,15 +130,12 @@ export async function GET(
     )
   );
 
-  // 4. Flatten
   const flat = physical.map((item: any, i: number) => {
     let imageUrl = item.cards?.image_url ?? null;
     if (!imageUrl && item.cards?.id) {
       const parts = item.cards.id.split('-');
       if (parts.length >= 2) {
-        const setId = parts[0];
-        const num = parts.slice(1).join('-');
-        imageUrl = `https://images.pokemontcg.io/${setId}/${num}_hires.png`;
+        imageUrl = `https://images.pokemontcg.io/${parts[0]}/${parts.slice(1).join('-')}_hires.png`;
       }
     }
     return {
@@ -148,15 +146,20 @@ export async function GET(
       setName:      item.cards?.set_name,
       cardNumber:   item.cards?.card_number,
       rarity:       item.cards?.rarity,
-      rawRarity:    rarityLookups[i] ?? null,
+      rawRarity:    resolved[i].rarity,
+      symbolUrl:    resolved[i].symbolUrl,
+      marketPrice:  resolved[i].marketPrice,
       imageUrl,
     };
   });
+
+  const totalValue = flat.reduce((sum, c) => sum + (c.marketPrice ?? 0) * (c.quantity ?? 1), 0);
 
   return NextResponse.json({
     username:    profile.username,
     avatarId:    profile.avatar_id,
     contactInfo: profile.contact_info ?? null,
+    totalValue:  Math.round(totalValue * 100) / 100,
     cards: flat,
   });
 }
