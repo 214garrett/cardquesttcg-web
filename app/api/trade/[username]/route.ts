@@ -12,8 +12,11 @@ const TCG_HEADERS: Record<string, string> = process.env.TCG_API_KEY
   : {};
 
 // Module-level in-memory cache — survives across requests within a Vercel instance
-// Avoids stale Next.js fetch cache issues; TTL = 2 hours
-const _tcgCache = new Map<string, { data: any; expires: number }>();
+const _tcgCache    = new Map<string, { data: any; expires: number }>();
+const _csvGroups:  { data: any; ts: number } | null = null;
+const _csvProducts = new Map<number, { data: any[]; ts: number }>();
+const _csvPrices   = new Map<number, { data: any[]; ts: number }>();
+const CSV_BASE = 'https://tcgcsv.com/tcgplayer/3'; // Category 3 = Pokémon
 
 interface TCGCardData {
   rarity?: string;
@@ -119,6 +122,83 @@ async function fetchByNameOnly(name: string, cardNumber: string | null): Promise
   return cards[0];
 }
 
+// ── tcgcsv.com Layer ─────────────────────────────────────────────
+// Free daily mirror of TCGPlayer prices — no API key, covers ALL sets
+let _csvGroupsCache: { data: any[]; ts: number } | null = null;
+
+async function csvFetch(url: string): Promise<any | null> {
+  const now = Date.now();
+  const cached = _tcgCache.get(url);
+  if (cached && cached.expires > now) return cached.data;
+  try {
+    const res = await fetch(url, { headers: { Accept: 'application/json' }, cache: 'no-store' });
+    if (!res.ok) return null;
+    const json = await res.json();
+    _tcgCache.set(url, { data: json, expires: now + 3600000 }); // 1h
+    return json;
+  } catch { return null; }
+}
+
+async function csvGetGroups(): Promise<any[] | null> {
+  if (_csvGroupsCache && Date.now() - _csvGroupsCache.ts < 86400000) return _csvGroupsCache.data;
+  const json = await csvFetch(`${CSV_BASE}/groups`);
+  const data = json?.results ?? json;
+  if (Array.isArray(data)) { _csvGroupsCache = { data, ts: Date.now() }; return data; }
+  return null;
+}
+
+function csvFindGroup(groups: any[], setName: string): any | null {
+  const norm = (s: string) => s.toLowerCase().replace(/[^a-z0-9]/g, '');
+  const target = norm(setName);
+  return groups.find(g => norm(g.name ?? '') === target)
+      ?? groups.find(g => norm(g.name ?? '').includes(target) || target.includes(norm(g.name ?? '')))
+      ?? null;
+}
+
+async function fetchTcgCsvPrice(name: string, setName: string | null, cardNumber: string | null): Promise<number | null> {
+  if (!name || !setName) return null;
+  try {
+    const groups = await csvGetGroups();
+    if (!groups) return null;
+    const group = csvFindGroup(groups, setName);
+    if (!group) return null;
+
+    const gid = group.groupId;
+    const [prodJson, priceJson] = await Promise.all([
+      csvFetch(`${CSV_BASE}/${gid}/products`),
+      csvFetch(`${CSV_BASE}/${gid}/prices`),
+    ]);
+    const products: any[] = prodJson?.results ?? prodJson ?? [];
+    const prices:   any[] = priceJson?.results ?? priceJson ?? [];
+    if (!products.length || !prices.length) return null;
+
+    const numOnly = cardNumber ? String(parseInt(cardNumber.split('/')[0], 10)) : null;
+    const normName = name.toLowerCase().replace(/[''`]/g, '').trim();
+
+    let product: any = null;
+    if (numOnly) {
+      product = products.find(p => {
+        const extNum = p.extendedData?.find((d: any) => d.name === 'Number')?.value ?? '';
+        return String(parseInt(extNum, 10)) === numOnly
+          || (p.name ?? '').includes(`${numOnly}/`)
+          || (p.name ?? '').endsWith(`- ${numOnly}`);
+      });
+    }
+    if (!product) {
+      const key = normName.split(' ').filter((t: string) => t.length > 1).slice(0, 2).join(' ');
+      product = products.find(p => (p.cleanName ?? p.name ?? '').toLowerCase().includes(key));
+    }
+    if (!product) return null;
+
+    const productPrices = prices.filter(p => p.productId === product.productId);
+    // Prefer market price, fall back to midpoint
+    const market = productPrices.find(p => p.marketPrice != null)?.marketPrice ?? null;
+    if (market != null) return market;
+    const mid = productPrices.find(p => p.midPrice != null)?.midPrice ?? null;
+    return mid;
+  } catch { return null; }
+}
+
 function hasPrices(d: TCGCardData | null): boolean {
   if (!d) return false;
   // Only true when there's an actual non-null price value — not just keys
@@ -164,7 +244,13 @@ async function resolveCardData(
     }
   }
 
-  const price = bestPrice(priceData?.tcgplayer?.prices) ?? cardmarketPrice(priceData?.cardmarket) ?? null;
+  // Layer 4: tcgcsv.com — free TCGPlayer mirror, covers all sets including special/international
+  let csvPrice: number | null = null;
+  if (!priceData) {
+    csvPrice = await fetchTcgCsvPrice(name, setName, cardNumber);
+  }
+
+  const price = bestPrice(priceData?.tcgplayer?.prices) ?? cardmarketPrice(priceData?.cardmarket) ?? csvPrice ?? null;
 
   return {
     rarity:      raw_rarity ?? meta?.rarity ?? null,
