@@ -52,7 +52,7 @@ function cardmarketPrice(cm?: { prices?: { avg30?: number; trendPrice?: number; 
 }
 
 /** Fetch with retry on empty/rate-limit response + in-memory cache */
-async function tcgFetch(url: string, retries = 2): Promise<any | null> {
+async function tcgFetch(url: string, retries = 1): Promise<any | null> {
   // Check in-memory cache first (bypasses stale Next.js fetch cache)
   const now = Date.now();
   const cached = _tcgCache.get(url);
@@ -131,7 +131,13 @@ async function csvFetch(url: string): Promise<any | null> {
   const cached = _tcgCache.get(url);
   if (cached && cached.expires > now) return cached.data;
   try {
-    const res = await fetch(url, { headers: { Accept: 'application/json' }, cache: 'no-store' });
+    const res = await fetch(url, {
+      headers: {
+        'Accept': 'application/json',
+        'User-Agent': 'Mozilla/5.0 (Macintosh; Intel Mac OS X 10_15_7) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/120.0.0.0 Safari/537.36',
+      },
+      cache: 'no-store',
+    });
     if (!res.ok) return null;
     const json = await res.json();
     _tcgCache.set(url, { data: json, expires: now + 3600000 }); // 1h
