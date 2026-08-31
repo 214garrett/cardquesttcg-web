@@ -350,7 +350,7 @@ export default function TradePage() {
                     <div style={{ aspectRatio: '3/4', background: '#0F0B1A', position: 'relative', overflow: 'hidden' }}>
                       {card.imageUrl ? (
                         <img className="card-img" src={card.imageUrl} alt={card.name}
-                             style={{ width: '100%', height: '100%', objectFit: 'cover' }} loading="lazy" />
+                             style={{ width: '100%', height: '100%', objectFit: 'contain' }} loading="lazy" />
                       ) : (
                         <div style={{ width: '100%', height: '100%', display: 'flex', alignItems: 'center', justifyContent: 'center', fontSize: 40 }}>🃏</div>
                       )}
