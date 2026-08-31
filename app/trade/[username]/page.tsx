@@ -141,7 +141,7 @@ export default function TradePage() {
       return l;
     });
     const valueStr = data.totalValue > 0 ? `\nEstimated value: ~${formatValue(data.totalValue)}` : '';
-    const text = `@${data.username}'s trade list (${data.cards.length} cards${valueStr}):\n${lines.join('\n')}\n\n— CardQuest TCG 🃏\ncardquesttcg-web.vercel.app/trade/${data.username}`;
+    const text = `@${data.username}'s trade list (${data.cards.length} cards${valueStr}):\n${lines.join('\n')}\n\n— CardQuest TCG 🃏\ncardquesttcg.app/trade/${data.username}`;
     navigator.clipboard.writeText(text).then(() => { setCopied(true); setTimeout(() => setCopied(false), 2000); });
   }
 
@@ -268,15 +268,44 @@ export default function TradePage() {
       <div style={{ maxWidth: 960, margin: '0 auto', padding: '24px 20px' }}>
 
         {/* CTA banner */}
-        <div style={{ marginBottom: 24, borderRadius: 16, background: 'linear-gradient(135deg, rgba(107,79,187,0.2), rgba(107,79,187,0.05))', border: '1px solid rgba(107,79,187,0.3)', padding: '20px 24px', display: 'flex', flexWrap: 'wrap', alignItems: 'center', justifyContent: 'space-between', gap: 16 }}>
-          <div>
-            <p style={{ color: '#FFFFFF', fontWeight: 700, fontSize: 15, margin: '0 0 4px' }}>Want to trade with {data.username}?</p>
-            <p style={{ color: '#9B7FEB', fontSize: 13, margin: 0 }}>Download CardQuest TCG to manage your collection and share your own trade list.</p>
+        <div style={{ marginBottom: 28, borderRadius: 20, background: 'linear-gradient(135deg, #1E1040 0%, #2A1560 50%, #1A0E38 100%)', border: '1px solid rgba(155,127,235,0.35)', overflow: 'hidden', position: 'relative' }}>
+          {/* Subtle top glow line */}
+          <div style={{ position: 'absolute', top: 0, left: 0, right: 0, height: 1, background: 'linear-gradient(90deg, transparent, rgba(155,127,235,0.6), transparent)' }} />
+          <div style={{ padding: '28px 28px 24px', position: 'relative' }}>
+            {/* Eyebrow */}
+            <p style={{ color: '#9B7FEB', fontSize: 11, fontWeight: 700, letterSpacing: '0.1em', textTransform: 'uppercase', margin: '0 0 10px' }}>🃏 Want in on this?</p>
+            {/* Headline */}
+            <h2 style={{ color: '#FFFFFF', fontSize: 22, fontWeight: 900, margin: '0 0 8px', lineHeight: 1.25 }}>
+              Share your own trade list.<br />
+              <span style={{ color: '#C4B5FD' }}>Start with 75 free packs.</span>
+            </h2>
+            {/* Sub-copy */}
+            <p style={{ color: '#9B7FEB', fontSize: 14, margin: '0 0 22px', lineHeight: 1.6, maxWidth: 480 }}>
+              CardQuest gives you a link just like this one — so other collectors can see exactly what you have available. No DMs, no guessing. Just deals.
+            </p>
+            {/* Feature pills */}
+            <div style={{ display: 'flex', flexWrap: 'wrap', gap: 8, marginBottom: 24 }}>
+              {[
+                { icon: '🔗', label: 'Your own shareable trade link' },
+                { icon: '📦', label: '75 packs free on day one' },
+                { icon: '📈', label: 'Live market prices on every card' },
+              ].map(f => (
+                <div key={f.label} style={{ display: 'flex', alignItems: 'center', gap: 6, background: 'rgba(107,79,187,0.18)', border: '1px solid rgba(107,79,187,0.3)', borderRadius: 999, padding: '7px 13px' }}>
+                  <span style={{ fontSize: 13 }}>{f.icon}</span>
+                  <span style={{ color: '#C4B5FD', fontSize: 12, fontWeight: 600 }}>{f.label}</span>
+                </div>
+              ))}
+            </div>
+            {/* CTA row */}
+            <div style={{ display: 'flex', flexWrap: 'wrap', alignItems: 'center', gap: 14 }}>
+              <a href="https://apps.apple.com/us/app/cardquest-tcg/id6789381374"
+                 style={{ display: 'inline-flex', alignItems: 'center', gap: 8, background: 'linear-gradient(135deg, #7C3AED, #6B4FBB)', color: '#fff', padding: '13px 26px', borderRadius: 999, fontWeight: 800, fontSize: 15, textDecoration: 'none', boxShadow: '0 6px 24px rgba(107,79,187,0.5)', whiteSpace: 'nowrap', letterSpacing: '-0.01em' }}>
+                <svg width="16" height="16" viewBox="0 0 20 20" fill="white"><path d="M16.76 10.75c-.02-2.3 1.87-3.4 1.96-3.46-1.07-1.56-2.73-1.77-3.32-1.79-1.41-.14-2.76.83-3.47.83-.72 0-1.82-.81-3-.79-1.54.02-2.97.9-3.76 2.27-1.6 2.78-.41 6.9 1.15 9.16.77 1.1 1.68 2.34 2.87 2.29 1.16-.05 1.59-.74 2.99-.74s1.79.74 3 .71c1.24-.02 2.03-1.12 2.78-2.23.88-1.28 1.24-2.52 1.26-2.58-.03-.01-2.44-.93-2.46-3.67zM14.28 3.8c.64-.78 1.07-1.87.95-2.95-.92.04-2.03.61-2.69 1.38-.59.68-1.11 1.77-.97 2.82 1.02.08 2.07-.52 2.71-1.25z"/></svg>
+                Download Free on iPhone
+              </a>
+              <p style={{ color: '#6B5FA0', fontSize: 12, margin: 0 }}>7-day free trial · Cancel anytime</p>
+            </div>
           </div>
-          <a href="https://apps.apple.com/us/app/cardquest-tcg/id6789381374"
-             style={{ flexShrink: 0, display: 'inline-block', background: 'linear-gradient(135deg, #6B4FBB, #9B7FEB)', color: '#fff', padding: '11px 22px', borderRadius: 999, fontWeight: 700, fontSize: 14, textDecoration: 'none', boxShadow: '0 4px 16px rgba(107,79,187,0.4)', whiteSpace: 'nowrap' }}>
-            Download App
-          </a>
         </div>
 
         {data.cards.length === 0 ? (
@@ -378,12 +407,17 @@ export default function TradePage() {
       </div>
 
       {/* Footer */}
-      <footer style={{ borderTop: '1px solid #2D1F5E', marginTop: 48, padding: '24px 20px', textAlign: 'center' }}>
-        <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'center', gap: 8, marginBottom: 8 }}>
-          <img src="/icon.png" alt="" style={{ width: 24, height: 24, borderRadius: 6 }} />
-          <span style={{ color: '#9B7FEB', fontSize: 13, fontWeight: 700 }}>CardQuest TCG</span>
+      <footer style={{ borderTop: '1px solid #2D1F5E', marginTop: 48, padding: '40px 20px 32px', textAlign: 'center' }}>
+        <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'center', gap: 10, marginBottom: 10 }}>
+          <img src="/icon.png" alt="" style={{ width: 32, height: 32, borderRadius: 8 }} />
+          <span style={{ color: '#FFFFFF', fontSize: 16, fontWeight: 800, letterSpacing: '-0.01em' }}>CardQuest <span style={{ color: '#9B7FEB' }}>TCG</span></span>
         </div>
-        <p style={{ color: '#4B3F72', fontSize: 12, margin: 0 }}>The premium Pokémon TCG collection tracker</p>
+        <p style={{ color: '#6B5FA0', fontSize: 13, margin: '0 0 20px' }}>Track, grade, and trade your Pokémon card collection.</p>
+        <a href="https://apps.apple.com/us/app/cardquest-tcg/id6789381374"
+           style={{ display: 'inline-flex', alignItems: 'center', gap: 7, background: 'rgba(107,79,187,0.2)', border: '1px solid rgba(107,79,187,0.35)', color: '#C4B5FD', padding: '10px 20px', borderRadius: 999, fontSize: 13, fontWeight: 700, textDecoration: 'none' }}>
+          <svg width="14" height="14" viewBox="0 0 20 20" fill="currentColor"><path d="M16.76 10.75c-.02-2.3 1.87-3.4 1.96-3.46-1.07-1.56-2.73-1.77-3.32-1.79-1.41-.14-2.76.83-3.47.83-.72 0-1.82-.81-3-.79-1.54.02-2.97.9-3.76 2.27-1.6 2.78-.41 6.9 1.15 9.16.77 1.1 1.68 2.34 2.87 2.29 1.16-.05 1.59-.74 2.99-.74s1.79.74 3 .71c1.24-.02 2.03-1.12 2.78-2.23.88-1.28 1.24-2.52 1.26-2.58-.03-.01-2.44-.93-2.46-3.67zM14.28 3.8c.64-.78 1.07-1.87.95-2.95-.92.04-2.03.61-2.69 1.38-.59.68-1.11 1.77-.97 2.82 1.02.08 2.07-.52 2.71-1.25z"/></svg>
+          Download on the App Store
+        </a>
       </footer>
     </div>
   );
