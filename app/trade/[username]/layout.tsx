@@ -28,14 +28,12 @@ export async function generateMetadata({ params }: { params: Promise<{ username:
         title: `@${data.username}'s Trade List`,
         description,
         siteName: 'CardQuest TCG',
-        images: [{ url: 'https://cardquesttcg-web.vercel.app/icon.png', width: 1024, height: 1024 }],
         type: 'website',
       },
       twitter: {
         card: 'summary',
         title: `@${data.username}'s Trade List — CardQuest TCG`,
         description,
-        images: ['https://cardquesttcg-web.vercel.app/icon.png'],
       },
     };
   } catch {
