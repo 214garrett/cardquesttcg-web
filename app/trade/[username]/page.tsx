@@ -277,7 +277,7 @@ export default function TradePage() {
             {/* Headline */}
             <h2 style={{ color: '#FFFFFF', fontSize: 22, fontWeight: 900, margin: '0 0 8px', lineHeight: 1.25 }}>
               Share your own trade list.<br />
-              <span style={{ color: '#C4B5FD' }}>Start with 75 free packs.</span>
+              <span style={{ color: '#C4B5FD' }}>Start with 25 free packs.</span>
             </h2>
             {/* Sub-copy */}
             <p style={{ color: '#9B7FEB', fontSize: 14, margin: '0 0 22px', lineHeight: 1.6, maxWidth: 480 }}>
@@ -287,7 +287,7 @@ export default function TradePage() {
             <div style={{ display: 'flex', flexWrap: 'wrap', gap: 8, marginBottom: 24 }}>
               {[
                 { icon: '🔗', label: 'Your own shareable trade link' },
-                { icon: '📦', label: '75 packs free on day one' },
+                { icon: '📦', label: '25 packs free on day one' },
                 { icon: '📈', label: 'Live market prices on every card' },
               ].map(f => (
                 <div key={f.label} style={{ display: 'flex', alignItems: 'center', gap: 6, background: 'rgba(107,79,187,0.18)', border: '1px solid rgba(107,79,187,0.3)', borderRadius: 999, padding: '7px 13px' }}>
