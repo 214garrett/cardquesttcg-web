@@ -141,7 +141,7 @@ export default function TradePage() {
       return l;
     });
     const valueStr = data.totalValue > 0 ? `\nEstimated value: ~${formatValue(data.totalValue)}` : '';
-    const text = `@${data.username}'s trade list (${data.cards.length} cards${valueStr}):\n${lines.join('\n')}\n\n— CardQuest TCG 🃏\ncardquesttcg.app/trade/${data.username}`;
+    const text = `@${data.username}'s trade list (${data.cards.length} cards${valueStr}):\n${lines.join('\n')}\n\n— CardQuest TCG\ncardquesttcg.app/trade/${data.username}`;
     navigator.clipboard.writeText(text).then(() => { setCopied(true); setTimeout(() => setCopied(false), 2000); });
   }
 
