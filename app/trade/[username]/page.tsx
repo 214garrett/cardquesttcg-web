@@ -210,7 +210,7 @@ export default function TradePage() {
               {shared ? '✓ Copied!' : '🔗 Share'}
             </button>
             <a href="https://apps.apple.com/us/app/cardquest-tcg/id6789381374"
-               style={{ background: '#6B4FBB', color: '#fff', padding: '8px 16px', borderRadius: 999, fontSize: 13, fontWeight: 600, textDecoration: 'none' }}>
+               style={{ background: '#6B4FBB', color: '#fff', padding: '8px 16px', borderRadius: 999, fontSize: 13, fontWeight: 600, textDecoration: 'none', display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
               Download
             </a>
           </div>
