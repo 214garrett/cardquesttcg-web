@@ -267,21 +267,41 @@ async function resolveCardData(
   };
 }
 
-/** Throttle: process cards with a small delay between each to avoid rate limits */
-async function resolveSequential(items: any[]): Promise<any[]> {
-  const results = [];
-  for (let i = 0; i < items.length; i++) {
-    const item = items[i];
-    if (i > 0) await new Promise(r => setTimeout(r, 200)); // 200ms between requests
-    const r = await resolveCardData(
-      item.cards?.raw_rarity ?? null,
-      item.cards?.id ?? null,
-      item.cards?.name ?? '',
-      item.cards?.set_name ?? null,
-      item.cards?.card_number ?? null,
-    );
-    results.push(r);
+/**
+ * Resolve card data with bounded concurrency.
+ *
+ * This was fully sequential with a 200ms gap between every card, so a trade
+ * list cost roughly cards x (request + 200ms) before anything rendered — six
+ * cards took several seconds and a large list far longer. Four at a time with
+ * a short stagger keeps the pressure on tcgcsv/pokemontcg.io modest while
+ * cutting wall time by about 4x. Order is preserved.
+ */
+const RESOLVE_CONCURRENCY = 4;
+const STAGGER_MS = 60;
+
+async function resolveAll(items: any[]): Promise<any[]> {
+  const results: any[] = new Array(items.length);
+  let next = 0;
+
+  async function worker(slot: number) {
+    await new Promise(r => setTimeout(r, slot * STAGGER_MS));
+    while (true) {
+      const i = next++;
+      if (i >= items.length) return;
+      const item = items[i];
+      results[i] = await resolveCardData(
+        item.cards?.raw_rarity ?? null,
+        item.cards?.id ?? null,
+        item.cards?.name ?? '',
+        item.cards?.set_name ?? null,
+        item.cards?.card_number ?? null,
+      );
+    }
   }
+
+  await Promise.all(
+    Array.from({ length: Math.min(RESOLVE_CONCURRENCY, items.length) }, (_, k) => worker(k))
+  );
   return results;
 }
 
@@ -318,7 +338,7 @@ export async function GET(
   const physical = (cards ?? []).filter((item: any) => item.cards?.source !== 'pack_pull');
 
   // Sequential resolution with throttle to avoid rate limiting pokemontcg.io
-  const resolved = await resolveSequential(physical);
+  const resolved = await resolveAll(physical);
 
   const flat = physical.map((item: any, i: number) => {
     let imageUrl = item.cards?.image_url ?? null;
@@ -345,11 +365,24 @@ export async function GET(
 
   const totalValue = flat.reduce((sum, c) => sum + (c.marketPrice ?? 0) * (c.quantity ?? 1), 0);
 
-  return NextResponse.json({
-    username:    profile.username,
-    avatarId:    profile.avatar_id,
-    contactInfo: profile.contact_info ?? null,
-    totalValue:  Math.round(totalValue * 100) / 100,
-    cards: flat,
-  });
+  return NextResponse.json(
+    {
+      username:    profile.username,
+      avatarId:    profile.avatar_id,
+      contactInfo: profile.contact_info ?? null,
+      totalValue:  Math.round(totalValue * 100) / 100,
+      cards: flat,
+    },
+    {
+      headers: {
+        // A trade link is shared to many people who all open the same URL.
+        // Without this every one of them re-fetched Supabase and re-priced
+        // every card. Now the first visitor pays that cost and the rest are
+        // served from the CDN. Five minutes fresh, then served stale for an
+        // hour while it refreshes in the background — card prices don't move
+        // meaningfully inside that window, and a stale price beats a spinner.
+        'Cache-Control': 'public, s-maxage=300, stale-while-revalidate=3600',
+      },
+    }
+  );
 }
